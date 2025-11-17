@@ -1,6 +1,7 @@
 import createContextHook from '@nkzw/create-context-hook';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useState, useEffect, useCallback, useMemo } from 'react';
+import { TEST_ACCOUNTS } from '../mocks/test-users';
 
 export type UserRole = 'citizen' | 'lawyer';
 
@@ -37,6 +38,19 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isHydrated, setIsHydrated] = useState<boolean>(false);
 
+  const initializeTestAccounts = useCallback(async () => {
+    try {
+      const storedUsers = await AsyncStorage.getItem('lex_rwanda_users');
+      if (!storedUsers) {
+        const users = TEST_ACCOUNTS.map(({ password, ...user }) => user);
+        await AsyncStorage.setItem('lex_rwanda_users', JSON.stringify(users));
+        console.log('Test accounts initialized');
+      }
+    } catch (error) {
+      console.error('Failed to initialize test accounts:', error);
+    }
+  }, []);
+
   const loadUser = useCallback(async () => {
     try {
       const userData = await AsyncStorage.getItem(AUTH_STORAGE_KEY);
@@ -57,10 +71,12 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
       setIsLoading(false);
     }, 100);
 
-    loadUser();
+    initializeTestAccounts().then(() => {
+      loadUser();
+    });
 
     return () => clearTimeout(timer);
-  }, [loadUser]);
+  }, [loadUser, initializeTestAccounts]);
 
   const signIn = useCallback(async (email: string, password: string) => {
     try {
